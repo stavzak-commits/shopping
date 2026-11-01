@@ -1,8 +1,12 @@
 <!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
-<base target="_top">
 <meta charset="utf-8">
+<title>🛒 רשימת קניות</title>
+<meta name="theme-color" content="#1f4d3a">
+<meta name="apple-mobile-web-app-title" content="קניות">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='24' fill='%231f4d3a'/%3E%3Ctext x='50' y='68' font-size='56' text-anchor='middle'%3E🛒%3C/text%3E%3C/svg%3E">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -158,7 +162,15 @@
 <div class="toast" id="toast"></div>
 
 <script>
-const KEY = <?!= JSON.stringify(appKey) ?>;
+// ⬇️ כתובת הסקריפט (Web app). אם נוצר פרסום חדש עם כתובת אחרת – מעדכנים כאן.
+window.API_URL = 'https://script.google.com/macros/s/AKfycbzOu3wevNDxvIMZfhS3-09TYWVKAnO2vrEefj6oDpBFcEtreN6f53r1sKLgjxrHuY5l/exec';
+// הסיסמה מגיעה מהקישור של הבוט (#k=...) ונשמרת בטלפון
+const KEY = (function(){
+  const m = (location.hash + '&' + location.search).match(/[#?&]k=([^&]+)/);
+  let k = m ? decodeURIComponent(m[1]) : '';
+  try { if (k) localStorage.setItem('shop-key', k); else k = localStorage.getItem('shop-key') || ''; } catch(e){}
+  return k;
+})();
 const EMOJI = {
   'מוצרי חלב וביצים':'🥛','ירקות ופירות':'🥬','לחם ומאפים':'🍞','בשר, עוף ודגים':'🍗','מזווה':'🥫',
   'משקאות':'🧃','קפואים':'🧊','חטיפים ומתוקים':'🍫','ניקיון וטיפוח':'🧴','אחר':'📦'
@@ -181,13 +193,35 @@ function call(action, data){
         .catch(e=>reject(e.message==='Failed to fetch' ? new Error('אין חיבור לשרת – בדקו אינטרנט') : e));
     } else if (window.__mockApi){ window.__mockApi(req).then(resolve, reject); }
     else reject(new Error('no backend'));
-  }).then(st=>{ S = st; render(); if (st.notice) toast('ℹ️ ' + st.notice, 3200); return st; })
-    .catch(err=>{ toast('⚠️ ' + (err && err.message || err)); throw err; });
+  }).then(st=>{
+      if (st.notice) toast('ℹ️ ' + st.notice, 3200);
+      // מעדכנים מהשרת רק כשאין עוד שינויים בדרך – כדי לא "להחזיר אחורה" שינוי שעוד נשמר
+      if (--pending === 0){ S = st; saveCache(); if (!sheetOpen()) render(); }
+      syncUi(); return st;
+    }, err=>{
+      pending--; syncUi();
+      toast('⚠️ ' + (err && err.message || err), 4000);
+      if (!loaded) showError(err);
+      else if (pending === 0 && KEY) call('state').catch(()=>{}); // מחזירים את המצב האמיתי
+      throw err;
+    });
 }
-function refresh(){
-  const b = document.getElementById('refresh'); b.classList.add('spin');
-  return call('state').finally(()=>b.classList.remove('spin'));
+let pending = 0, loaded = false;
+const _call = call;
+call = function(action, data){ pending++; syncUi(); return _call(action, data).then(st=>{ loaded = true; return st; }); };
+function syncUi(){ document.getElementById('refresh').classList.toggle('spin', pending > 0); }
+function sheetOpen(){ return document.getElementById('veil').classList.contains('show'); }
+function saveCache(){ try { localStorage.setItem('shop-state', JSON.stringify(S)); } catch(e){} }
+function loadCache(){ try { const c = JSON.parse(localStorage.getItem('shop-state')||'null'); if (c && c.fixed) { S = c; return true; } } catch(e){} return false; }
+function showError(err){
+  document.getElementById('view').innerHTML = `<div class="empty"><div class="big">😕</div>לא הצלחתי לטעון את הרשימה<br><small>${esc(err && err.message || err)}</small><br><br><button class="btn" onclick="refresh()">לנסות שוב</button></div>`;
 }
+function refresh(){ return call('state').catch(()=>{}); }
+// עדכון מקומי מיידי + שליחה לשרת ברקע
+function optimistic(fn, action, data){ fn(); saveCache(); render(); return call(action, data); }
+const normName = s => String(s||'').replace(/[\u0591-\u05C7"'״׳`]/g,'').replace(/\s+/g,' ').trim().toLowerCase();
+const sameItem = (a,b) => { const x = normName(a), y = normName(b); return x===y || x.startsWith(y+' ') || y.startsWith(x+' '); };
+const tmpId = () => 'tmp' + Date.now() + Math.floor(Math.random()*1000);
 
 // ---------- local "in cart" ticks ----------
 function loadChecked(){ try { return JSON.parse(localStorage.getItem('cart-checked')||'{}'); } catch(e){ return {}; } }
@@ -340,6 +374,7 @@ function openSheet(html){ document.getElementById('sheet').innerHTML = html; doc
 function closeSheet(){ document.getElementById('veil').classList.remove('show'); }
 
 function openEdit(kind, id){
+  if (String(id).startsWith('tmp')) { toast('רגע, הפריט עוד נשמר…'); return; }
   const it = (kind==='fixed'?S.fixed:S.extra).find(x=>x.id===id); if(!it) return;
   const units = (S.units.length ? S.units : []).slice();
   if (it.unit && units.indexOf(it.unit)<0) units.unshift(it.unit);
@@ -379,13 +414,15 @@ function openEdit(kind, id){
     const b = $('e-del');
     if (!b.dataset.sure){ b.dataset.sure = '1'; b.textContent = 'בטוח? לחצו שוב'; b.style.flex = '2';
       setTimeout(()=>{ if (b.isConnected){ delete b.dataset.sure; b.textContent = '🗑️'; b.style.flex = ''; } }, 3000); return; }
-    closeSheet(); call(kind==='fixed'?'deleteFixed':'deleteExtra', {id}).then(()=>toast('נמחק 🗑️'));
+    closeSheet(); toast('נמחק 🗑️');
+    optimistic(()=>{ if (kind==='fixed') S.fixed = S.fixed.filter(x=>x.id!==id); else S.extra = S.extra.filter(x=>x.id!==id); },
+      kind==='fixed'?'deleteFixed':'deleteExtra', {id}).catch(()=>{});
   };
   const save = ()=>{
     const patch = { name: $('e-name').value.trim() || it.name, qty: q.value===''?'':Number(q.value), unit, category: cat };
     patch.active = active;
-    Object.assign(it, patch); render(); closeSheet();
-    call(kind==='fixed'?'updateFixed':'updateExtra', {id, patch}).then(()=>toast('נשמר ✓'));
+    closeSheet(); toast('נשמר ✓');
+    optimistic(()=>Object.assign(it, patch), kind==='fixed'?'updateFixed':'updateExtra', {id, patch}).catch(()=>{});
   };
   $('e-save').onclick = save;
   [$('e-name'), q].forEach(inp=>inp.addEventListener('keydown', e=>{ if(e.key==='Enter') save(); }));
@@ -403,9 +440,11 @@ function openFinish(){
     <button class="opt" id="f-ticked" ${ticked.length?'':'disabled'}><span class="opt-t">✓ למחוק רק מה שסימנתי בסל</span><span class="opt-n">${ticked.length}</span></button>
     ${np?`<p class="sheet-p" style="margin-top:4px">⏸️ ${np} פריטים מושהים יישארו לפעם הבאה</p>`:''}
     <div class="actions"><button class="btn ghost" id="f-cancel">ביטול</button></div>`);
-  const done = ids => { closeSheet(); call('completeOrder', ids ? {ids} : {}).then(()=>{
+  const done = ids => { closeSheet();
     Object.keys(checked).forEach(k=>{ if (!ids || k.startsWith('fixed:') || ids.indexOf(k.slice(6))>=0) delete checked[k]; });
-    saveChecked(); render(); }); };
+    saveChecked();
+    optimistic(()=>{ S.extra = ids ? S.extra.filter(x=>ids.indexOf(x.id)<0) : S.extra.filter(x=>x.active===false); },
+      'completeOrder', ids ? {ids} : {}).catch(()=>{}); };
   document.getElementById('f-all').onclick = ()=>done(null);
   document.getElementById('f-ticked').onclick = ()=>done(ticked);
   document.getElementById('f-cancel').onclick = closeSheet;
@@ -453,8 +492,22 @@ document.getElementById('view').addEventListener('submit', e=>{
   const f = e.target, kind = f.dataset.add;
   const d = { name:f.name.value.trim(), qty:f.qty.value===''?'':Number(f.qty.value), unit:f.unit.value, category:f.category.value };
   if (!d.name) return;
-  call(kind==='fixed'?'addFixed':'addExtra', d).then(st=>{ if (!st.notice) toast('נוסף: ' + d.name);
-    const n = document.querySelector('form.add input[name=name]'); if(n) n.focus(); });
+  const fmt = it => (it.qty!==''&&it.qty!=null) ? ' – ×' + it.qty + (it.unit?' '+it.unit:'') : '';
+  if (kind==='fixed'){
+    const ex = S.fixed.find(x=>normName(x.name)===normName(d.name));
+    if (ex) { toast('ℹ️ "' + ex.name + '" כבר ברשימה הקבועה', 3200); return; }
+    toast('נוסף: ' + d.name);
+    optimistic(()=>S.fixed.push(Object.assign({id:tmpId(), active:true}, d, {category:d.category||'אחר'})), 'addFixed', d).catch(()=>{});
+  } else {
+    const ex = S.extra.find(x=>sameItem(x.name, d.name));
+    const fx = S.fixed.find(x=>x.active && sameItem(x.name, d.name));
+    if (ex && ex.active!==false) { toast('ℹ️ "' + ex.name + '" כבר ברשימה' + fmt(ex), 3200); return; }
+    if (!ex && fx) { toast('ℹ️ "' + fx.name + '" כבר ברשימה (קבוע)' + fmt(fx), 3200); return; }
+    if (ex) { toast('▶️ "' + ex.name + '" היה מושהה – הופעל מחדש'); optimistic(()=>{ ex.active = true; }, 'addExtra', d).catch(()=>{}); }
+    else { toast('נוסף: ' + d.name);
+      optimistic(()=>S.extra.push(Object.assign({id:tmpId(), by:'עמוד', addedAt:'', active:true}, d, {category:d.category||'אחר'})), 'addExtra', d).catch(()=>{}); }
+  }
+  f.reset(); const n = f.querySelector('input[name=name]'); if (n) n.focus();
 });
 
 document.getElementById('copy').onclick = ()=>{
@@ -467,8 +520,15 @@ document.getElementById('copy').onclick = ()=>{
 document.getElementById('share').addEventListener('click', e=>{ e.currentTarget.href = 'https://wa.me/?text=' + encodeURIComponent(listAsText()); });
 document.getElementById('finish').onclick = openFinish;
 
-refresh();
-setInterval(()=>{ if (!document.hidden && !document.getElementById('veil').classList.contains('show')) call('state').catch(()=>{}); }, 60000);
+window.addEventListener('hashchange', ()=>{ if (/k=/.test(location.hash)) location.reload(); });
+if (!KEY) {
+  document.getElementById('view').innerHTML = '<div class="empty"><div class="big">🔒</div>צריך להיכנס מהקישור של הבוט.<br>כתבו <b>סופר</b> בקבוצת הוואטסאפ ולחצו על הקישור.</div>';
+  document.getElementById('bottom').style.display = 'none';
+} else {
+  if (loadCache()) { loaded = true; render(); }
+  refresh();
+}
+setInterval(()=>{ if (!document.hidden && !sheetOpen() && pending === 0) call('state').catch(()=>{}); }, 60000);
 </script>
 </body>
 </html>
