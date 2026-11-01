@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f5f1e8; --card:#fffdf8; --ink:#1d2a24; --muted:#6d7a72; --line:#e7e0d1;
+    --green:#1f4d3a; --green-2:#2f6b52; --green-soft:#e3eee7; --tomato:#e05a36; --tomato-soft:#fbe6de;
+    --amber:#b7791f; --radius:18px; --shadow:0 1px 0 rgba(29,42,36,.04), 0 6px 20px -12px rgba(29,42,36,.25);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font-family:'Rubik',system-ui,sans-serif;font-size:16px}
+  button,input,select{font:inherit;color:inherit}
+  .wrap{max-width:640px;margin:0 auto;padding:0 16px 140px}
+
+  /* header */
+  header{padding:22px 0 10px;display:flex;align-items:flex-start;gap:12px}
+  .title{flex:1}
+  h1{margin:0;font-size:28px;font-weight:700;letter-spacing:-.3px;display:flex;align-items:center;gap:10px}
+  h1 .cart{display:inline-grid;place-items:center;width:42px;height:42px;border-radius:14px;background:var(--green);color:#fff;font-size:22px}
+  .sub{color:var(--muted);font-size:14px;margin-top:6px}
+  .icon-btn{border:1px solid var(--line);background:var(--card);width:42px;height:42px;border-radius:14px;cursor:pointer;display:grid;place-items:center;font-size:18px}
+  .icon-btn.spin span{display:inline-block;animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(-360deg)}}
+
+  /* tabs */
+  .tabs{position:sticky;top:0;z-index:5;background:var(--bg);padding:10px 0 12px}
+  .seg{display:flex;background:#ebe5d8;border-radius:14px;padding:4px;gap:4px}
+  .seg button{flex:1;border:0;background:transparent;padding:10px 6px;border-radius:11px;cursor:pointer;font-weight:500;color:var(--muted);display:flex;align-items:center;justify-content:center;gap:6px}
+  .seg button.on{background:var(--card);color:var(--ink);box-shadow:var(--shadow)}
+  .count{font-size:12px;background:var(--green-soft);color:var(--green);border-radius:99px;padding:1px 8px;font-weight:600}
+  .seg button.on .count{background:var(--green);color:#fff}
+
+  /* progress */
+  .progress{background:var(--card);border-radius:var(--radius);padding:14px 16px;box-shadow:var(--shadow);margin-bottom:14px}
+  .progress .row{display:flex;justify-content:space-between;font-size:14px;color:var(--muted);margin-bottom:8px}
+  .progress b{color:var(--ink)}
+  .bar{height:8px;background:#efe9dc;border-radius:99px;overflow:hidden}
+  .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--green-2),var(--green));border-radius:99px;transition:width .35s}
+
+  /* category cards */
+  .cat{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:12px;overflow:hidden}
+  .cat h3{margin:0;padding:12px 16px 8px;font-size:14px;font-weight:600;color:var(--muted);display:flex;align-items:center;gap:8px}
+  .cat h3 .e{font-size:18px}
+  .cat h3 .n{margin-inline-start:auto;font-weight:500;font-size:12px}
+  .item{display:flex;align-items:center;gap:12px;padding:12px 16px;border-top:1px solid var(--line);cursor:pointer;user-select:none;transition:background .15s}
+  .item:active{background:#faf6ee}
+  .chk{width:26px;height:26px;border-radius:50%;border:2px solid #cfc6b4;flex:none;display:grid;place-items:center;transition:all .15s;color:transparent;font-size:14px}
+  .item.done .chk{background:var(--green);border-color:var(--green);color:#fff}
+  .item.done .name{text-decoration:line-through;color:var(--muted)}
+  .info{flex:1;min-width:0}
+  .name{font-weight:500;font-size:16px;line-height:1.3}
+  .meta{font-size:12px;color:var(--muted);margin-top:2px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+  .tag{font-size:11px;padding:1px 7px;border-radius:99px;background:var(--green-soft);color:var(--green);font-weight:500}
+  .tag.new{background:var(--tomato-soft);color:var(--tomato)}
+  .qty{font-weight:600;font-size:15px;background:#f3eee3;border-radius:10px;padding:5px 10px;white-space:nowrap}
+  .qty small{font-weight:400;color:var(--muted);font-size:12px;margin-inline-start:3px}
+  .off{opacity:.45}
+
+  /* stepper / toggle / delete */
+  .stepper{display:flex;align-items:center;background:#f3eee3;border-radius:12px;flex:none}
+  .stepper button{border:0;background:transparent;width:32px;height:34px;cursor:pointer;font-size:18px;color:var(--green)}
+  .stepper span{min-width:30px;text-align:center;font-weight:600;font-size:15px}
+  .stepper small{display:block;font-size:10px;color:var(--muted);font-weight:400;line-height:1}
+  .toggle{width:44px;height:26px;border-radius:99px;background:#d8d0bf;position:relative;flex:none;cursor:pointer;border:0;transition:background .2s}
+  .toggle::after{content:"";position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+  .toggle.on{background:var(--green)}
+  .toggle.on::after{transform:translateX(-18px)}
+
+  /* add form */
+  .add{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:12px;margin-bottom:14px;display:grid;grid-template-columns:1fr 70px 96px;gap:8px}
+  .add input,.add select,.sheet input,.sheet select{border:1px solid var(--line);background:#fff;border-radius:12px;padding:11px 12px;width:100%;outline:none}
+  .add input:focus,.sheet input:focus,.sheet select:focus{border-color:var(--green-2)}
+  .add .cat-sel{grid-column:1/3}
+  .btn{border:0;border-radius:12px;padding:11px 14px;font-weight:600;cursor:pointer;background:var(--green);color:#fff}
+  .btn.ghost{background:var(--card);color:var(--ink);border:1px solid var(--line)}
+  .btn.danger{background:var(--tomato-soft);color:var(--tomato)}
+
+  .empty{text-align:center;color:var(--muted);padding:40px 20px}
+  .empty .big{font-size:44px;margin-bottom:8px}
+  .hint{font-size:13px;color:var(--muted);text-align:center;margin:14px 0}
+
+  /* bottom bar */
+  .bottom{position:fixed;inset-inline:0;bottom:0;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:linear-gradient(to top,var(--bg) 70%,rgba(245,241,232,0));z-index:6}
+  .bottom .in{max-width:640px;margin:0 auto;display:flex;gap:8px}
+  .bottom .btn{flex:1;padding:14px 10px;display:flex;align-items:center;justify-content:center;gap:6px}
+
+  /* sheet */
+  .veil{position:fixed;inset:0;background:rgba(20,28,24,.4);z-index:20;display:none;align-items:flex-end;justify-content:center}
+  .veil.show{display:flex}
+  .sheet{background:var(--card);width:100%;max-width:640px;border-radius:22px 22px 0 0;padding:18px 18px calc(18px + env(safe-area-inset-bottom));animation:up .2s ease-out}
+  @keyframes up{from{transform:translateY(40px);opacity:0}}
+  .sheet h2{margin:0 0 14px;font-size:20px}
+  .sheet label{display:block;font-size:13px;color:var(--muted);margin:10px 0 5px}
+  .sheet .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .sheet .actions{display:flex;gap:8px;margin-top:18px}
+  .sheet .actions .btn{flex:1}
+
+  .toast{position:fixed;bottom:96px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:10px 18px;border-radius:99px;font-size:14px;opacity:0;transition:all .25s;z-index:30;pointer-events:none;white-space:nowrap}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .loading{text-align:center;padding:60px;color:var(--muted)}
+  .edit-btn{border:0;background:transparent;width:34px;height:34px;border-radius:10px;cursor:pointer;font-size:15px;flex:none;opacity:.75}
+  .edit-btn:hover,.edit-btn:active{background:#f0eadd;opacity:1}
+  .sheet{max-height:88vh;overflow:auto}
+  .sheet-head{display:flex;align-items:center;gap:10px;margin-bottom:12px}.sheet-head h2{margin:0}
+  .big-input{font-size:20px!important;font-weight:600;padding:14px!important}
+  .big-stepper{display:flex;align-items:center;gap:10px}
+  .big-stepper button{width:54px;height:54px;border-radius:16px;border:0;background:var(--green-soft);color:var(--green);font-size:26px;cursor:pointer;flex:none}
+  .big-stepper input{flex:1;text-align:center;font-size:24px;font-weight:700;height:54px}
+  .chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
+  .chips::-webkit-scrollbar{display:none}
+  .chips button{flex:none;border:1px solid var(--line);background:#fff;border-radius:99px;padding:8px 13px;cursor:pointer;font-size:14px;white-space:nowrap}
+  .chips button.on{background:var(--green);border-color:var(--green);color:#fff}
+  .row-toggle{display:flex;align-items:center;justify-content:space-between;margin-top:16px;padding:12px 14px;background:#f6f2e9;border-radius:14px}
+  .sheet-p{color:var(--muted);margin:0 0 14px}
+  .opt{display:flex;align-items:center;width:100%;border:1px solid var(--line);background:#fff;border-radius:14px;padding:16px;margin-bottom:10px;cursor:pointer;text-align:start;font-weight:500}
+  .opt:active{background:#faf6ee}.opt[disabled]{opacity:.45;cursor:default}
+  .paused{background:#f8f4ea;border:1.5px dashed #d9cfba;box-shadow:none}
+  .paused h3{color:#8a6d2f}
+  .paused-hint{margin:-2px 16px 10px;font-size:13px;color:var(--muted)}
+  .meta b{color:#8a6d2f;font-weight:600}
+  .opt-t{flex:1}.opt-n{background:var(--tomato-soft);color:var(--tomato);border-radius:99px;padding:2px 10px;font-weight:600;font-size:14px}
+  #f-all{border-color:var(--tomato)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="title">
+      <h1><span class="cart">🛒</span>רשימת הקניות</h1>
+      <div class="sub" id="sub">טוען…</div>
+    </div>
+    <button class="icon-btn" id="refresh" title="רענון"><span>↻</span></button>
+  </header>
+
+  <div class="tabs">
+    <div class="seg" id="tabs">
+      <button data-tab="order" class="on">להזמנה <span class="count" id="c-order">0</span></button>
+      <button data-tab="fixed">קבועים <span class="count" id="c-fixed">0</span></button>
+      <button data-tab="extra">נוספו <span class="count" id="c-extra">0</span></button>
+    </div>
+  </div>
+
+  <main id="view"><div class="loading">טוען את הרשימה…</div></main>
+</div>
+
+<div class="bottom" id="bottom"><div class="in">
+  <button class="btn ghost" id="copy">📋 העתקה</button>
+  <a class="btn ghost" id="share" href="https://wa.me/" target="_blank" rel="noopener" style="text-decoration:none">💬 שליחה</a>
+  <button class="btn" id="finish" style="flex:1.4">🧹 סיום קנייה</button>
+</div></div>
+
+<div class="veil" id="veil"><div class="sheet" id="sheet"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const KEY = <?!= JSON.stringify(appKey) ?>;
+const EMOJI = {
+  'מוצרי חלב וביצים':'🥛','ירקות ופירות':'🥬','לחם ומאפים':'🍞','בשר, עוף ודגים':'🍗','מזווה':'🥫',
+  'משקאות':'🧃','קפואים':'🧊','חטיפים ומתוקים':'🍫','ניקיון וטיפוח':'🧴','אחר':'📦'
+};
+let S = {fixed:[], extra:[], categories:Object.keys(EMOJI), units:[], lastOrder:''};
+let tab = 'order';
+let checked = loadChecked();
+
+// ---------- server ----------
+function call(action, data){
+  return new Promise((resolve, reject)=>{
+    const req = {k:KEY, action, data:data||{}};
+    if (window.google && google.script && google.script.run){
+      google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).api(req);
+    } else if (window.API_URL){
+      fetch(API_URL + '?api=1&q=' + encodeURIComponent(JSON.stringify(req)))
+        .then(r=>{ if(!r.ok) throw new Error('שגיאת תקשורת (' + r.status + ')'); return r.text(); })
+        .then(t=>{ try { return JSON.parse(t); } catch(e){ throw new Error('הסקריפט לא מחזיר נתונים – בדקו שב-Deploy הגישה היא Anyone'); } })
+        .then(j=> j.ok ? resolve(j.state) : reject(new Error(j.error)))
+        .catch(e=>reject(e.message==='Failed to fetch' ? new Error('אין חיבור לשרת – בדקו אינטרנט') : e));
+    } else if (window.__mockApi){ window.__mockApi(req).then(resolve, reject); }
+    else reject(new Error('no backend'));
+  }).then(st=>{ S = st; render(); if (st.notice) toast('ℹ️ ' + st.notice, 3200); return st; })
+    .catch(err=>{ toast('⚠️ ' + (err && err.message || err)); throw err; });
+}
+function refresh(){
+  const b = document.getElementById('refresh'); b.classList.add('spin');
+  return call('state').finally(()=>b.classList.remove('spin'));
+}
+
+// ---------- local "in cart" ticks ----------
+function loadChecked(){ try { return JSON.parse(localStorage.getItem('cart-checked')||'{}'); } catch(e){ return {}; } }
+function saveChecked(){ try { localStorage.setItem('cart-checked', JSON.stringify(checked)); } catch(e){} }
+
+// ---------- helpers ----------
+const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmtQty = it => (it.qty===''||it.qty==null) ? '' : String(it.qty);
+function orderItems(){
+  const out = [];
+  S.extra.filter(x=>x.active!==false).forEach(x=>out.push(Object.assign({kind:'extra'}, x)));
+  S.fixed.filter(f=>f.active).forEach(f=>out.push(Object.assign({kind:'fixed'}, f)));
+  return out;
+}
+function pausedItems(){
+  return S.extra.filter(x=>x.active===false).map(x=>Object.assign({kind:'extra'}, x))
+    .concat(S.fixed.filter(f=>!f.active).map(f=>Object.assign({kind:'fixed'}, f)));
+}
+const toggleBtn = (kind, it) => `<button class="toggle ${it.active!==false?'on':''}" data-active="${kind}:${esc(it.id)}" title="${it.active!==false?'פעיל – ייכנס להזמנה':'מושהה – לא ייכנס להזמנה'}"></button>`;
+function groupBy(items){
+  const order = S.categories.length ? S.categories : Object.keys(EMOJI);
+  const g = {};
+  items.forEach(it=>{ const c = order.indexOf(it.category)>=0 ? it.category : 'אחר'; (g[c]=g[c]||[]).push(it); });
+  return order.filter(c=>g[c]).map(c=>[c, g[c]]);
+}
+function toast(msg, ms){
+  const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toast._t); toast._t = setTimeout(()=>t.classList.remove('show'), ms || 2200);
+}
+const editBtn = (kind, id) => `<button class="edit-btn" data-edit-btn="${kind}:${esc(id)}" aria-label="עריכה">✏️</button>`;
+function listAsText(){
+  const items = orderItems();
+  let s = '🛒 רשימת קניות\n';
+  groupBy(items).forEach(([c, arr])=>{
+    s += '\n' + (EMOJI[c]||'•') + ' ' + c + '\n';
+    arr.forEach(it=>{ s += '• ' + it.name + (fmtQty(it) ? ' ×' + fmtQty(it) + (it.unit?' '+it.unit:'') : '') + '\n'; });
+  });
+  return s.trim();
+}
+
+// ---------- render ----------
+function render(){
+  const items = orderItems();
+  document.getElementById('c-order').textContent = items.length;
+  document.getElementById('c-fixed').textContent = S.fixed.length;
+  document.getElementById('c-extra').textContent = S.extra.length;
+  const np = pausedItems().length;
+  document.getElementById('sub').textContent =
+    items.length + ' פריטים להזמנה' + (np ? ' · ' + np + ' מושהים' : '') + (S.lastOrder ? ' · הזמנה אחרונה ' + S.lastOrder : '');
+  document.getElementById('bottom').style.display = tab==='order' && items.length ? '' : 'none';
+  const v = document.getElementById('view');
+  v.innerHTML = tab==='order' ? renderOrder(items) : tab==='fixed' ? renderFixed() : renderExtra();
+}
+
+function renderOrder(items){
+  if (!items.length) return addForm('extra') + `<div class="empty"><div class="big">🎉</div>אין מה להזמין כרגע.<br>כתבו פריטים בקבוצת הוואטסאפ או הוסיפו כאן.</div>` + renderPaused();
+  const done = items.filter(it=>checked[it.kind+':'+it.id]).length;
+  let h = addForm('extra') + `<div class="progress"><div class="row"><span>הוכנסו לסל</span><span><b>${done}</b> / ${items.length}</span></div>
+    <div class="bar"><i style="width:${Math.round(done/items.length*100)}%"></i></div></div>`;
+  groupBy(items).forEach(([c, arr])=>{
+    h += `<section class="cat"><h3><span class="e">${EMOJI[c]||'📦'}</span>${esc(c)}<span class="n">${arr.length}</span></h3>`;
+    arr.forEach(it=>{
+      const k = it.kind+':'+it.id, on = !!checked[k];
+      const meta = it.kind==='fixed' ? `<span class="tag">קבוע</span>`
+        : `<span class="tag new">נוסף</span>${it.by?`<span>👤 ${esc(it.by)}</span>`:''}${it.addedAt?`<span>· ${esc(it.addedAt)}</span>`:''}`;
+      h += `<div class="item ${on?'done':''}" data-tick="${esc(k)}">
+        <div class="chk">✓</div>
+        <div class="info"><div class="name">${esc(it.name)}</div><div class="meta">${meta}</div></div>
+        ${fmtQty(it)?`<div class="qty">${esc(fmtQty(it))}${it.unit?`<small>${esc(it.unit)}</small>`:''}</div>`:''}
+        ${editBtn(it.kind, it.id)}
+      </div>`;
+    });
+    h += `</section>`;
+  });
+  return h + renderPaused();
+}
+
+function renderPaused(){
+  const p = pausedItems();
+  if (!p.length) return '';
+  let h = `<section class="cat paused"><h3><span class="e">⏸️</span>מושהים – לא ייכנסו להזמנה הזו<span class="n">${p.length}</span></h3>
+    <p class="paused-hint">עברו על הרשימה לפני ההזמנה: צריך משהו מכאן? הפעילו את המתג.</p>`;
+  p.forEach(it=>{
+    h += `<div class="item" data-edit="${it.kind}:${esc(it.id)}">
+      ${toggleBtn(it.kind, it)}
+      <div class="info off"><div class="name">${esc(it.name)}</div>
+        <div class="meta"><span class="tag ${it.kind==='fixed'?'':'new'}">${it.kind==='fixed'?'קבוע':'נוסף'}</span>${fmtQty(it)?`<span>×${esc(fmtQty(it))}${it.unit?' '+esc(it.unit):''}</span>`:''}</div></div>
+      ${editBtn(it.kind, it.id)}
+    </div>`;
+  });
+  return h + `</section>`;
+}
+
+function addForm(kind){
+  const units = S.units.length ? S.units : ['יח\'','ק"ג','גרם','ליטר','חבילות','בקבוקים'];
+  return `<form class="add" data-add="${kind}">
+    <input name="name" placeholder="${kind==='fixed'?'פריט קבוע חדש…':'מה עוד צריך?'}" autocomplete="off" required>
+    <input name="qty" type="number" inputmode="decimal" step="any" min="0" placeholder="כמות">
+    <select name="unit"><option value="">יחידה</option>${units.map(u=>`<option>${esc(u)}</option>`).join('')}</select>
+    <select name="category" class="cat-sel"><option value="">קטגוריה אוטומטית</option>${S.categories.map(c=>`<option>${esc(c)}</option>`).join('')}</select>
+    <button class="btn" type="submit">הוספה</button>
+  </form>`;
+}
+
+function stepper(it){
+  return `<div class="stepper" data-id="${esc(it.id)}">
+    <button data-step="1" aria-label="הוספה">+</button>
+    <span>${esc(fmtQty(it)||'–')}${it.unit?`<small>${esc(it.unit)}</small>`:''}</span>
+    <button data-step="-1" aria-label="הפחתה">−</button></div>`;
+}
+
+function renderFixed(){
+  let h = addForm('fixed');
+  if (!S.fixed.length) return h + `<div class="empty"><div class="big">📌</div>עוד אין פריטים קבועים.</div>`;
+  groupBy(S.fixed).forEach(([c, arr])=>{
+    h += `<section class="cat"><h3><span class="e">${EMOJI[c]||'📦'}</span>${esc(c)}<span class="n">${arr.length}</span></h3>`;
+    arr.forEach(it=>{
+      h += `<div class="item" data-edit="fixed:${esc(it.id)}">
+        ${toggleBtn('fixed', it)}
+        <div class="info ${it.active?'':'off'}"><div class="name">${esc(it.name)}</div><div class="meta">${it.active?'יוזמן בכל הזמנה':'מושהה'}</div></div>
+        ${stepper(it)}${editBtn('fixed', it.id)}
+      </div>`;
+    });
+    h += `</section>`;
+  });
+  return h + `<p class="hint">המתג מוריד פריט מההזמנה הקרובה בלי למחוק אותו · לחיצה על פריט לעריכה</p>`;
+}
+
+function renderExtra(){
+  let h = addForm('extra');
+  if (!S.extra.length) return h + `<div class="empty"><div class="big">💬</div>אין פריטים נוספים.<br>כתבו בקבוצה למשל: <b>חלב 2</b></div>`;
+  groupBy(S.extra).forEach(([c, arr])=>{
+    h += `<section class="cat"><h3><span class="e">${EMOJI[c]||'📦'}</span>${esc(c)}<span class="n">${arr.length}</span></h3>`;
+    arr.forEach(it=>{
+      const on = it.active!==false;
+      h += `<div class="item" data-edit="extra:${esc(it.id)}">
+        ${toggleBtn('extra', it)}
+        <div class="info ${on?'':'off'}"><div class="name">${esc(it.name)}</div>
+          <div class="meta">${on?'':'<b>⏸ מושהה</b> '}${it.by?`👤 ${esc(it.by)}`:''}${it.addedAt?` · ${esc(it.addedAt)}`:''}</div></div>
+        ${stepper(it)}${editBtn('extra', it.id)}
+      </div>`;
+    });
+    h += `</section>`;
+  });
+  return h + `<p class="hint">המתג משהה פריט: הוא לא ייכנס להזמנה הזו, אבל יישאר לפעם הבאה</p>`;
+}
+
+// ---------- edit sheet ----------
+function openSheet(html){ document.getElementById('sheet').innerHTML = html; document.getElementById('veil').classList.add('show'); }
+function closeSheet(){ document.getElementById('veil').classList.remove('show'); }
+
+function openEdit(kind, id){
+  const it = (kind==='fixed'?S.fixed:S.extra).find(x=>x.id===id); if(!it) return;
+  const units = (S.units.length ? S.units : []).slice();
+  if (it.unit && units.indexOf(it.unit)<0) units.unshift(it.unit);
+  let qty = (it.qty===''||it.qty==null) ? '' : Number(it.qty), unit = it.unit||'', cat = it.category, active = it.active!==false;
+  openSheet(`<div class="sheet-head"><h2>עריכת פריט</h2>
+      <span class="tag ${kind==='fixed'?'':'new'}">${kind==='fixed'?'קבוע':'נוסף'}</span></div>
+    <input id="e-name" class="big-input" value="${esc(it.name)}" placeholder="שם הפריט">
+    <label>כמות</label>
+    <div class="big-stepper">
+      <button data-q="1">+</button>
+      <input id="e-qty" type="number" step="any" min="0" inputmode="decimal" value="${esc(qty)}" placeholder="–">
+      <button data-q="-1">−</button>
+    </div>
+    <label>יחידה</label>
+    <div class="chips" id="e-units"><button data-u="" class="${unit===''?'on':''}">ללא</button>${units.map(u=>`<button data-u="${esc(u)}" class="${u===unit?'on':''}">${esc(u)}</button>`).join('')}</div>
+    <label>קטגוריה</label>
+    <div class="chips" id="e-cats">${S.categories.map(c=>`<button data-c="${esc(c)}" class="${c===cat?'on':''}">${EMOJI[c]||''} ${esc(c)}</button>`).join('')}</div>
+    <div class="row-toggle"><span>להזמין בהזמנה הקרובה</span><button class="toggle ${active!==false?'on':''}" id="e-active"></button></div>
+    <div class="actions">
+      <button class="btn danger" id="e-del">🗑️</button>
+      <button class="btn ghost" id="e-cancel">ביטול</button>
+      <button class="btn" id="e-save" style="flex:2">שמירה</button>
+    </div>`);
+  const $ = s=>document.getElementById(s);
+  const q = $('e-qty');
+  document.querySelectorAll('[data-q]').forEach(b=>b.onclick=()=>{
+    const inc = (unit==='ק"ג'||unit==='ליטר') ? 0.5 : 1;
+    q.value = Math.max(inc, (Number(q.value)||0) + Number(b.dataset.q)*inc);
+  });
+  $('e-units').onclick = e=>{ const b=e.target.closest('[data-u]'); if(!b) return; unit=b.dataset.u;
+    $('e-units').querySelectorAll('button').forEach(x=>x.classList.toggle('on', x===b)); };
+  $('e-cats').onclick = e=>{ const b=e.target.closest('[data-c]'); if(!b) return; cat=b.dataset.c;
+    $('e-cats').querySelectorAll('button').forEach(x=>x.classList.toggle('on', x===b)); };
+  if ($('e-active')) $('e-active').onclick = ()=>{ active=!active; $('e-active').classList.toggle('on', active); };
+  $('e-cancel').onclick = closeSheet;
+  $('e-del').onclick = ()=>{
+    const b = $('e-del');
+    if (!b.dataset.sure){ b.dataset.sure = '1'; b.textContent = 'בטוח? לחצו שוב'; b.style.flex = '2';
+      setTimeout(()=>{ if (b.isConnected){ delete b.dataset.sure; b.textContent = '🗑️'; b.style.flex = ''; } }, 3000); return; }
+    closeSheet(); call(kind==='fixed'?'deleteFixed':'deleteExtra', {id}).then(()=>toast('נמחק 🗑️'));
+  };
+  const save = ()=>{
+    const patch = { name: $('e-name').value.trim() || it.name, qty: q.value===''?'':Number(q.value), unit, category: cat };
+    patch.active = active;
+    Object.assign(it, patch); render(); closeSheet();
+    call(kind==='fixed'?'updateFixed':'updateExtra', {id, patch}).then(()=>toast('נשמר ✓'));
+  };
+  $('e-save').onclick = save;
+  [$('e-name'), q].forEach(inp=>inp.addEventListener('keydown', e=>{ if(e.key==='Enter') save(); }));
+}
+
+// ---------- finish shopping ----------
+function openFinish(){
+  const act = S.extra.filter(x=>x.active!==false);
+  const np = S.extra.length - act.length;
+  const ticked = S.extra.filter(x=>checked['extra:'+x.id]).map(x=>x.id);
+  if (!act.length && !ticked.length){ toast('אין פריטים שנוספו למחוק – הקבועים נשארים תמיד'); return; }
+  openSheet(`<h2>🎉 סיימתם קנייה?</h2>
+    <p class="sheet-p">מה למחוק מהרשימה? <b>הקבועים${np?' והמושהים':''} לא יימחקו.</b></p>
+    <button class="opt" id="f-all" ${act.length?'':'disabled'}><span class="opt-t">🗑️ למחוק את כל הפריטים שנוספו</span><span class="opt-n">${act.length}</span></button>
+    <button class="opt" id="f-ticked" ${ticked.length?'':'disabled'}><span class="opt-t">✓ למחוק רק מה שסימנתי בסל</span><span class="opt-n">${ticked.length}</span></button>
+    ${np?`<p class="sheet-p" style="margin-top:4px">⏸️ ${np} פריטים מושהים יישארו לפעם הבאה</p>`:''}
+    <div class="actions"><button class="btn ghost" id="f-cancel">ביטול</button></div>`);
+  const done = ids => { closeSheet(); call('completeOrder', ids ? {ids} : {}).then(()=>{
+    Object.keys(checked).forEach(k=>{ if (!ids || k.startsWith('fixed:') || ids.indexOf(k.slice(6))>=0) delete checked[k]; });
+    saveChecked(); render(); }); };
+  document.getElementById('f-all').onclick = ()=>done(null);
+  document.getElementById('f-ticked').onclick = ()=>done(ticked);
+  document.getElementById('f-cancel').onclick = closeSheet;
+}
+document.getElementById('veil').addEventListener('click', e=>{ if(e.target.id==='veil') e.currentTarget.classList.remove('show'); });
+
+// ---------- events ----------
+document.getElementById('tabs').addEventListener('click', e=>{
+  const b = e.target.closest('button[data-tab]'); if(!b) return;
+  tab = b.dataset.tab;
+  document.querySelectorAll('#tabs button').forEach(x=>x.classList.toggle('on', x===b));
+  render(); window.scrollTo({top:0});
+});
+document.getElementById('refresh').onclick = refresh;
+
+document.getElementById('view').addEventListener('click', e=>{
+  const eb = e.target.closest('[data-edit-btn]');
+  if (eb){ e.stopPropagation(); const [kind, id] = eb.dataset.editBtn.split(':'); openEdit(kind, id); return; }
+
+  const tick = e.target.closest('[data-tick]');
+  if (tick){ const k = tick.dataset.tick; if (checked[k]) delete checked[k]; else checked[k]=1; saveChecked(); render(); return; }
+
+  const tg = e.target.closest('[data-active]');
+  if (tg){ e.stopPropagation(); const [kind, id] = tg.dataset.active.split(':');
+    const it = (kind==='fixed'?S.fixed:S.extra).find(x=>x.id===id); it.active = it.active===false; render();
+    toast(it.active ? '▶️ ' + it.name + ' חזר להזמנה' : '⏸️ ' + it.name + ' הושהה');
+    call(kind==='fixed'?'updateFixed':'updateExtra', {id, patch:{active:it.active}}); return; }
+
+  const st = e.target.closest('[data-step]');
+  if (st){ e.stopPropagation();
+    const id = st.closest('.stepper').dataset.id, kind = tab==='fixed'?'fixed':'extra';
+    const it = (kind==='fixed'?S.fixed:S.extra).find(x=>x.id===id);
+    const cur = Number(it.qty)||0, step = Number(st.dataset.step);
+    const inc = (it.unit==='ק"ג' || it.unit==='ליטר') ? 0.5 : 1;
+    it.qty = Math.max(inc, cur + step*inc); render();
+    clearTimeout(it._t); it._t = setTimeout(()=>call(kind==='fixed'?'updateFixed':'updateExtra', {id, patch:{qty:it.qty}}), 600);
+    return; }
+
+  const ed = e.target.closest('[data-edit]');
+  if (ed){ const [kind, id] = ed.dataset.edit.split(':'); openEdit(kind, id); }
+});
+
+document.getElementById('view').addEventListener('submit', e=>{
+  e.preventDefault();
+  const f = e.target, kind = f.dataset.add;
+  const d = { name:f.name.value.trim(), qty:f.qty.value===''?'':Number(f.qty.value), unit:f.unit.value, category:f.category.value };
+  if (!d.name) return;
+  call(kind==='fixed'?'addFixed':'addExtra', d).then(st=>{ if (!st.notice) toast('נוסף: ' + d.name);
+    const n = document.querySelector('form.add input[name=name]'); if(n) n.focus(); });
+});
+
+document.getElementById('copy').onclick = ()=>{
+  const txt = listAsText();
+  (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).then(()=>toast('הרשימה הועתקה 📋'), ()=>{
+    const ta = document.createElement('textarea'); ta.value = txt; document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); toast('הרשימה הועתקה 📋'); } catch(e){} ta.remove();
+  });
+};
+document.getElementById('share').addEventListener('click', e=>{ e.currentTarget.href = 'https://wa.me/?text=' + encodeURIComponent(listAsText()); });
+document.getElementById('finish').onclick = openFinish;
+
+refresh();
+setInterval(()=>{ if (!document.hidden && !document.getElementById('veil').classList.contains('show')) call('state').catch(()=>{}); }, 60000);
+</script>
+</body>
+</html>
